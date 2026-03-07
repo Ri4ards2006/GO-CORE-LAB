@@ -1,0 +1,35 @@
+# --- Binaries & Build Artifacts ---
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.out
+
+# --- Go Specific ---
+go.sum
+vendor/
+*.test
+*.prof
+
+# --- Hardware / Embedded ---
+.pio/
+.elf
+.hex
+*.map
+*.o
+
+# --- OS & IDE ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Security ---
+.env
+secret.json
+*.key
+*.pem
