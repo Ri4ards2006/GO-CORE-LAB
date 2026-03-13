@@ -36,6 +36,22 @@ for m < 5 {
 }
 
 
+arch := ArchX86_64
+
+switch  arch {
+
+
+case ArchX86_64:
+	fmt.Println("x86-64 architecture")
+case ArchARM:
+	fmt.Println("ARM architecture")
+case ArchARMAArch64:
+	fmt.Println("AArch64 architecture")
+default:
+	fmt.Printf("Unknown architecture: 0x%X\n", arch)	
+	
+}
+
 
 
 
