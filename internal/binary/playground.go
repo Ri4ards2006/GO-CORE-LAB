@@ -48,3 +48,18 @@ bytes = append(bytes, 0x01, 0x02) // Slice erweitern
 fmt.Printf("Length: %d, Capacity: %d\n", len(bytes), cap(bytes)) // Länge und Kapazität anzeigen
 
 }
+
+func Playground() {
+	fmt.Println("Playground for learning Go features")
+
+	result := add(10, 32)
+
+	fmt.Println("Addition result:", result)
+
+	val, err := divide(10.0, 3.0)
+	if err != nil {
+		fmt.Println("Error:", err)
+	} else {
+		fmt.Println("Division result:", val)
+	}
+}
