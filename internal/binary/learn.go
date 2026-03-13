@@ -2,7 +2,15 @@ package binary
 
 import "fmt"
 
+const (
+ArchX86_64 = uint16(0x3E)
+ArchARM    = uint16(0x28)
+ArchARMAArch64 = uint16(0xB7)
 
+
+
+
+)
 x := 42
 // was heißt genau fmt also die wörter nicht das package fmt in Go ist ein Standardpaket,
 //  das Funktionen für die Formatierung von Ein- und Ausgabe bereitstellt. 
@@ -14,16 +22,16 @@ if x > 10
 
 {
 
-	fmt.Println("x is greater than 10")
+	fmt.Printf("x is greater than 10: %d\n", x)
 }
 else if x == 10 {
 
-	fmt.Println("x is equal to 10")
+	fmt.Printf("x is equal to 10: %d\n", x)
 }
 
 else {
 
-	fmt.Println("x is less than 10")
+	fmt.Printf("x is less than 10: %d\n", x)
 }
 
 
