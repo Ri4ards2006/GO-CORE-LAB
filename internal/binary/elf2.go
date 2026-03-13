@@ -43,3 +43,15 @@ var machineNames = map[uint16]string{
 	0xFF00: "LoOS (Operating system-specific)",
 	0xFFFF: "HiOS (Operating system-specific)",
 }
+
+type ELFHeader struct {
+
+	Class  uint8  // 1 = 32bit, 2 = 64bit
+	Data   uint8  // 1 = little endian, 2 = big endian
+	Machine uint16 // 0x3E = x86_64, 0x28 = ARM
+	Entry   uint64 // entry point address
+	Shoff   uint64 // section header offset
+	Shnum   uint16 // number of section headers
+	ShStrndx uint16 // section header string table index
+	
+}
