@@ -104,3 +104,20 @@ func PrintAll(items []Printable) {
 	for _, item := range items {
 		item.Print()
 	}
+
+
+func learnStructs() {
+	s1 := Section{Name: ".text", Offset: 0x1000, Size: 512}
+	s2 := Section{Name: ".data", Offset: 0x2000, Size: 256}
+
+	s1.Print()
+	s2.Print()
+
+	sections := []Printable{s1, s2}
+
+	for i, sec := range sections {
+		fmt.Printf("Section %d:\n", i, sec.Name)
+		sec.Print()
+	}
+}
+
