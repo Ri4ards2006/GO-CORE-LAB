@@ -6,11 +6,71 @@ const (
 ArchX86_64 = uint16(0x3E)
 ArchARM    = uint16(0x28)
 ArchARMAArch64 = uint16(0xB7)
-
-
-
-
 )
+
+
+
+func LearnControlFlow() {
+x := 42
+
+if x > 10 {
+	fmt.Println("x is greater than 10:", x)
+}
+else if x == 10 {
+	fmt.Println("x is equal to 10:", x)
+}
+else {
+	fmt.Println("x is less than 10:", x)
+}
+
+
+// For Schleife einzige schleife in Go, die eine Initialisierung, eine Bedingung und eine Inkrementierung enthält.
+for i := 0; i < 5; i++ {
+	fmt.Printf("i: %d\n", i)
+}
+
+m := 0
+for m < 5 {
+	fmt.Printf("m: %d\n", m)
+	m++
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 x := 42
 // was heißt genau fmt also die wörter nicht das package fmt in Go ist ein Standardpaket,
 //  das Funktionen für die Formatierung von Ein- und Ausgabe bereitstellt. 
