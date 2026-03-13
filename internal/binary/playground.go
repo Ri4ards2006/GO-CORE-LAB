@@ -62,4 +62,12 @@ func Playground() {
 	} else {
 		fmt.Println("Division result:", val)
 	}
+
+
+fmt.Println("Maps example:")
+learnMaps()
+
+fmt.Println("\nSlices example:")
+learnSlices()
+
 }
