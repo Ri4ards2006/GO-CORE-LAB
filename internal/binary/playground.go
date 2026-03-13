@@ -71,3 +71,25 @@ fmt.Println("\nSlices example:")
 learnSlices()
 
 }
+
+
+// Structs 	wie Klassen in C++ oder Python, 
+// aber ohne Methoden (Methoden können separat definiert werden)
+// Also konstruktoren ?
+// Structs können Felder haben, die verschiedene Datentypen enthalten können
+// Sie sind nützlich, um komplexe Datenstrukturen zu modellieren,
+//  z.B. ELF-Header, Sektionen, Symbole usw.
+
+type Section struct {
+Name string
+Offset uint64
+Size uint64
+}
+
+// Method auf Struct - wie eine Klasse in C++ oder Python, aber ohne class keyword
+// s Section = "this" in anderen Sprachen, aber explizit
+
+func (s Section) Print() {
+	fmt.Printf("Section: %s, Offset: 0x%X, Size: %d bytes\n", s.Name, s.Offset, s.Size)
+}
+
