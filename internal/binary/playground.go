@@ -93,3 +93,14 @@ func (s Section) Print() {
 	fmt.Printf("Section: %s, Offset: 0x%X, Size: %d bytes\n", s.Name, s.Offset, s.Size)
 }
 
+// Interface Definiert nur WAS eine Struktur tun soll, nicht WIE
+type Printable interface {
+	Print()
+}
+
+// Funktion die JEDEn Typ akzeptiert, der das Printable Interface implementiert
+
+func PrintAll(items []Printable) {
+	for _, item := range items {
+		item.Print()
+	}
