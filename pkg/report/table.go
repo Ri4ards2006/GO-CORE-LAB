@@ -90,3 +90,4 @@ func (t *Table) Render() string {
 
 	return out.String()
 }
+

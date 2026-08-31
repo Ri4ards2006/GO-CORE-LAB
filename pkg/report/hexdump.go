@@ -146,3 +146,4 @@ func colorForByte(b byte) string {
 	}
 	return ColorHigh
 }
+

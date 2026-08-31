@@ -15,3 +15,4 @@ func FuzzParseFLX(f *testing.F) {
 		_, _ = ParseFLXBytes(data, "fuzz.flx")
 	})
 }
+

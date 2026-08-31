@@ -63,3 +63,4 @@ func TestMmapZeroByteFile(t *testing.T) {
 		t.Errorf("expected len 0, got %d", mf.Len())
 	}
 }
+

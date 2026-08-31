@@ -58,3 +58,4 @@ func BenchmarkParseELF_BytesZeroCopy(b *testing.B) {
 		}
 	}
 }
+

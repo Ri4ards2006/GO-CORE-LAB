@@ -40,3 +40,4 @@ func TestTableFormatting(t *testing.T) {
 		t.Errorf("unexpected table output: %s", rendered)
 	}
 }
+

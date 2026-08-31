@@ -16,3 +16,4 @@ func FuzzParseELF(f *testing.F) {
 		_, _ = ParseELFBytes(data, "fuzz.elf")
 	})
 }
+
