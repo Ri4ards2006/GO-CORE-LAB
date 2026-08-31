@@ -24,12 +24,12 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 - [x] **ELF Magic & Identification:** Validate `0x7F 'E' 'L' 'F'`, parse Class (32/64-bit), and decode Endianness (`binary.LittleEndian` / `binary.BigEndian`).
 - [x] **Architecture Identification:** Decode `e_machine` to identify x86, x86_64, ARM, AArch64, and RISC-V targets.
 - [x] **ELF File Header Offsets:** Read Entrypoint (`e_entry`), Section Header Table Offset (`e_shoff`), Section Count (`e_shnum`), and String Table Index (`e_shstrndx`).
-- [ ] **Section Header Table Parser:**
-  - [ ] Implement `Elf64_Shdr` / `Elf32_Shdr` struct unpacking from `e_shoff`.
-  - [ ] Read section attributes: `sh_name`, `sh_type` (`SHT_PROGBITS`, `SHT_SYMTAB`, `SHT_STRTAB`, `SHT_NOBITS`), `sh_flags` (`SHF_WRITE`, `SHF_ALLOC`, `SHF_EXECINSTR`), `sh_addr`, `sh_offset`, `sh_size`.
-- [ ] **Section Name String Table (`.shstrtab`) Resolution:**
-  - [ ] Seek to `.shstrtab` raw data offset.
-  - [ ] Extract null-terminated strings using `sh_name` string table offsets to populate human-readable section names (`.text`, `.data`, `.rodata`, `.bss`).
+- [x] **Section Header Table Parser:**
+  - [x] Implement `Elf64_Shdr` / `Elf32_Shdr` struct unpacking from `e_shoff`.
+  - [x] Read section attributes: `sh_name`, `sh_type` (`SHT_PROGBITS`, `SHT_SYMTAB`, `SHT_STRTAB`, `SHT_NOBITS`), `sh_flags` (`SHF_WRITE`, `SHF_ALLOC`, `SHF_EXECINSTR`), `sh_addr`, `sh_offset`, `sh_size`.
+- [x] **Section Name String Table (`.shstrtab`) Resolution:**
+  - [x] Seek to `.shstrtab` raw data offset.
+  - [x] Extract null-terminated strings using `sh_name` string table offsets to populate human-readable section names (`.text`, `.data`, `.rodata`, `.bss`).
 - [ ] **Symbol Table (`.symtab` & `.dynsym`) Extractor:**
   - [ ] Parse `Elf64_Sym` / `Elf32_Sym` entries (`st_name`, `st_info`, `st_other`, `st_shndx`, `st_value`, `st_size`).
   - [ ] Cross-reference string table (`.strtab`) to resolve function and global variable names.
@@ -96,4 +96,3 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 - [ ] **Testing, CI & Fuzzing:**
   - [ ] Automated Go unit tests against curated test fixtures in `testdata/`.
   - [ ] Go native fuzz testing (`go test -fuzz`) for binary header and packet parsers to prevent panics and bounds out-of-range crashes.
-
