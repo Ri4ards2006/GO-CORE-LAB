@@ -203,3 +203,4 @@ func (p *Packet) Summary() string {
 	}
 	return fmt.Sprintf("[%s] %s %s -> %s (len=%d)", ts, proto, src, dst, len(p.Raw))
 }
+

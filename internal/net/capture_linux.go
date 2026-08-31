@@ -118,3 +118,4 @@ func (c *RawSocketCapture) Close() error {
 	}
 	return nil
 }
+

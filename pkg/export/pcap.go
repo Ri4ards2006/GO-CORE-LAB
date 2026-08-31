@@ -189,3 +189,4 @@ func (pr *PcapReader) NextPacket() ([]byte, time.Time, error) {
 
 	return data, ts, nil
 }
+

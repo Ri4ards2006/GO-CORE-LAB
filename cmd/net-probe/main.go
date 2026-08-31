@@ -214,3 +214,4 @@ func runSerial(device string, baud int, mode hw.DelimiterMode) {
 		fmt.Println(frame.String())
 	}
 }
+

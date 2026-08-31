@@ -220,3 +220,4 @@ func (sm *SerialMonitor) Close() error {
 	}
 	return nil
 }
+

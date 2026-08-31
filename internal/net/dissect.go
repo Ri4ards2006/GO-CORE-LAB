@@ -258,3 +258,4 @@ func FormatHexDump(data []byte) string {
 	}
 	return result
 }
+

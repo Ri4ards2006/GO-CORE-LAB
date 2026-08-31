@@ -156,3 +156,4 @@ func TestDissectTruncatedPacket(t *testing.T) {
 		t.Fatal("expected error for truncated packet, got nil")
 	}
 }
+
