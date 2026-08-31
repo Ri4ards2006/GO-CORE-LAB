@@ -63,19 +63,20 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 
 **Objective:** Implement real-time packet sniffing in `cmd/net-probe` and hardware serial/bus monitoring.
 
-- [ ] **Network Capture Engine (`cmd/net-probe`):**
-  - [ ] Raw socket capture via Linux `AF_PACKET` (`syscall.SOCK_RAW`).
+- [x] **Network Capture Engine (`cmd/net-probe`):**
+  - [x] Raw socket capture via Linux `AF_PACKET` (`syscall.SOCK_RAW`).
   - [ ] BPF (Berkeley Packet Filter) userspace filtering interface.
-- [ ] **Protocol Dissection Stack:**
-  - [ ] Layer 2: Ethernet frame decoder (MAC addresses, EtherType).
-  - [ ] Layer 3: IPv4 / IPv6 header unpacker (TTL, protocols, IP addresses, checksums).
-  - [ ] Layer 4: TCP / UDP / ICMP segment parser (port mappings, flags, seq/ack tracking).
-- [ ] **Hardware Bridge Telemetry (`internal/hw`):**
-  - [ ] UART / Serial streaming reader (configurable baudrates: 115200, 9600).
+- [x] **Protocol Dissection Stack:**
+  - [x] Layer 2: Ethernet frame decoder (MAC addresses, EtherType).
+  - [x] Layer 3: IPv4 / IPv6 / ARP header unpacker (TTL, protocols, IP addresses, checksums).
+  - [x] Layer 4: TCP / UDP / ICMP segment parser (port mappings, flags, seq/ack tracking).
+- [x] **Hardware Bridge Telemetry (`internal/hw`):**
+  - [x] UART / Serial streaming reader (configurable baudrates: 115200, 9600).
   - [ ] Linux `spidev` and `i2cdev` passive bus monitor.
-  - [ ] Frame synchronizer with start-of-frame (SOF) / end-of-frame (EOF) delimiters.
-- [ ] **Export & Persistence:**
-  - [ ] Stream packet captures to standard `.pcap` / `.pcapng` format.
+  - [x] Frame synchronizer with start-of-frame (SOF) / end-of-frame (EOF) delimiters and line delimiters.
+- [x] **Export & Persistence:**
+  - [x] Stream packet captures to standard `.pcap` format (`pkg/export`).
+  - [x] Replay and dissect `.pcap` captures in `net-probe parse-pcap`.
   - [ ] Real-time telemetry output in JSON-lines (`.jsonl`).
 
 ---
