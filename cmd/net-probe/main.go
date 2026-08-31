@@ -2,26 +2,42 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/Ri4ards2006/go-core-lab/internal/hw"
 	gonet "github.com/Ri4ards2006/go-core-lab/internal/net"
+	"github.com/Ri4ards2006/go-core-lab/internal/pipeline"
 	"github.com/Ri4ards2006/go-core-lab/pkg/export"
 )
 
 func printUsage() {
-	fmt.Println("Usage: net-probe [command] [options]")
+	fmt.Println("Usage: net-probe <command> [options]")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  capture <interface> [-w output.pcap]     Live raw socket packet sniffer")
+	fmt.Println("  live [options]                           Launch concurrent worker-pool pipeline engine")
+	fmt.Println("  capture <interface> [-w output.pcap]     Direct raw socket packet sniffer")
 	fmt.Println("  parse-pcap <file.pcap>                   Parse and replay packets from a PCAP file")
-	fmt.Println("  serial <device> [baud] [newline|sync]    Live UART/Serial bus telemetry monitor")
+	fmt.Println("  serial <device> [baud] [newline|sync]    Direct UART/Serial bus telemetry monitor")
 	fmt.Println("  help                                     Show this help message")
+	fmt.Println()
+	fmt.Println("Options for 'live':")
+	fmt.Println("  --interface <iface>      Network interface to sniff (e.g., eth0, lo)")
+	fmt.Println("  --replay <file.pcap>     Replay packets from PCAP file")
+	fmt.Println("  --serial <device>        Serial device (e.g., /dev/ttyUSB0)")
+	fmt.Println("  --baud <rate>            Serial baud rate (default: 115200)")
+	fmt.Println("  --mode <newline|sync>    Serial delimiter mode (default: newline)")
+	fmt.Println("  --workers <n>            Number of dissection workers (default: NumCPU)")
+	fmt.Println("  --queue <size>           Ingestion queue buffer size (default: 2048)")
+	fmt.Println("  --pcap-out <file.pcap>   Record processed packets to PCAP file")
+	fmt.Println("  --dashboard              Enable real-time ANSI terminal telemetry dashboard")
 	fmt.Println()
 }
 
@@ -36,6 +52,9 @@ func main() {
 	switch cmd {
 	case "help", "-h", "--help":
 		printUsage()
+
+	case "live":
+		runLivePipeline(os.Args[2:])
 
 	case "capture":
 		if len(os.Args) < 3 {
@@ -82,6 +101,171 @@ func main() {
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+func runLivePipeline(args []string) {
+	fs := flag.NewFlagSet("live", flag.ExitOnError)
+	ifaceFlag := fs.String("interface", "", "Network interface to sniff (e.g., eth0)")
+	replayFlag := fs.String("replay", "", "Replay packets from PCAP file")
+	serialFlag := fs.String("serial", "", "Serial device (e.g., /dev/ttyUSB0)")
+	baudFlag := fs.Int("baud", 115200, "Serial baud rate")
+	modeFlag := fs.String("mode", "newline", "Serial delimiter mode: newline or sync")
+	workersFlag := fs.Int("workers", runtime.NumCPU(), "Dissection worker count")
+	queueFlag := fs.Int("queue", 2048, "Queue buffer depth")
+	pcapOutFlag := fs.String("pcap-out", "", "Output PCAP recording file")
+	dashFlag := fs.Bool("dashboard", false, "Enable live terminal dashboard")
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 1. Determine Source
+	var src pipeline.Source
+	if *ifaceFlag != "" {
+		src = &rawSocketAdapter{iface: *ifaceFlag}
+	} else if *replayFlag != "" {
+		src = pipeline.NewPcapReplaySource(*replayFlag, true)
+	} else if *serialFlag != "" {
+		mode := hw.DelimiterNewline
+		if *modeFlag == "sync" {
+			mode = hw.DelimiterSyncByte
+		}
+		src = pipeline.NewSerialSource(hw.FrameConfig{
+			Device:   *serialFlag,
+			BaudRate: *baudFlag,
+			Mode:     mode,
+			SOF:      0xAA,
+			EOF:      0x55,
+		})
+	} else {
+		fmt.Println("Error: must specify one of --interface, --replay, or --serial")
+		fmt.Println("Run 'net-probe live --help' for options.")
+		os.Exit(1)
+	}
+
+	// 2. Configure Pipeline Engine
+	cfg := pipeline.EngineConfig{
+		NumWorkers:         *workersFlag,
+		QueueSize:          *queueFlag,
+		RingBufferSize:     512,
+		DropOnBackpressure: false,
+	}
+
+	engine := pipeline.NewPipelineEngine(cfg, src)
+
+	// 3. Optional PCAP Sink
+	if *pcapOutFlag != "" {
+		pSink, err := pipeline.NewPcapSink(*pcapOutFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating PCAP sink: %v\n", err)
+			os.Exit(1)
+		}
+		engine.AddSink(pSink)
+		fmt.Printf("[*] Recording pipeline events to PCAP: %s\n", *pcapOutFlag)
+	}
+
+	// 4. Console Logger Sink if dashboard disabled
+	if !*dashFlag {
+		engine.AddSink(&consoleLoggerSink{})
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		cancel()
+	}()
+
+	if err := engine.Start(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "Error starting pipeline engine: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("[*] Pipeline Engine started with %d workers (queue size: %d)\n", cfg.NumWorkers, cfg.QueueSize)
+
+	if *dashFlag {
+		dash := pipeline.NewDashboard(engine, 150*time.Millisecond)
+		dash.Run(ctx)
+	} else {
+		<-ctx.Done()
+	}
+
+	// Graceful Teardown
+	fmt.Println("\n[*] Shutting down pipeline engine...")
+	_ = engine.Stop()
+
+	// Print Final Summary Report
+	snap := engine.Stats.Snapshot()
+	fmt.Println("\n╔══════════════════════════════════════════════════════════════════╗")
+	fmt.Println("║                   FINAL EXECUTION SUMMARY                        ║")
+	fmt.Println("╚══════════════════════════════════════════════════════════════════╝")
+	fmt.Printf("  Total Processed:  %d events\n", snap.TotalProcessed)
+	fmt.Printf("  Total Volume:     %.2f KiB\n", float64(snap.TotalBytes)/1024)
+	fmt.Printf("  Dropped Events:   %d\n", snap.DroppedEvents)
+	fmt.Printf("  Error Events:     %d\n", snap.ErrorEvents)
+	fmt.Printf("  Avg Latency:      %s (Min: %s, Max: %s)\n", snap.AvgLatency, snap.MinLatency, snap.MaxLatency)
+	fmt.Printf("  Protocol Stats:   IPv4: %d, IPv6: %d, ARP: %d, TCP: %d, UDP: %d, ICMP: %d, Serial: %d\n",
+		snap.IPv4Count, snap.IPv6Count, snap.ARPCount, snap.TCPCount, snap.UDPCount, snap.ICMPCount, snap.SerialCount)
+}
+
+// rawSocketAdapter adapts RawSocketCapture to the pipeline.Source interface.
+type rawSocketAdapter struct {
+	iface   string
+	capture *gonet.RawSocketCapture
+}
+
+func (r *rawSocketAdapter) Start(ctx context.Context) (<-chan pipeline.IngestionEvent, error) {
+	r.capture = gonet.NewRawSocketCapture(gonet.CaptureConfig{
+		Interface: r.iface,
+		SnapLen:   65535,
+	})
+	pktChan, err := r.capture.Start(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	outChan := make(chan pipeline.IngestionEvent, 128)
+	go func() {
+		defer close(outChan)
+		var id uint64
+		for pkt := range pktChan {
+			id++
+			outChan <- pipeline.IngestionEvent{
+				ID:        id,
+				Type:      pipeline.EventNetwork,
+				Timestamp: pkt.Timestamp,
+				Data:      pkt.Raw,
+				Source:    r.iface,
+			}
+		}
+	}()
+	return outChan, nil
+}
+
+func (r *rawSocketAdapter) Close() error {
+	if r.capture != nil {
+		return r.capture.Close()
+	}
+	return nil
+}
+
+// consoleLoggerSink formats and logs events to standard output.
+type consoleLoggerSink struct{}
+
+func (c *consoleLoggerSink) OnEvent(ctx context.Context, event pipeline.PipelineEvent) error {
+	fmt.Printf("#%04d [w:%d] %s\n", event.ID, event.WorkerID, event.Summary())
+	if event.Packet != nil && len(event.Packet.Payload) > 0 {
+		fmt.Print(gonet.FormatHexDump(event.Packet.Payload))
+	}
+	return nil
+}
+
+func (c *consoleLoggerSink) Close() error {
+	return nil
 }
 
 func runCapture(iface string, pcapPath string) {
@@ -214,4 +398,3 @@ func runSerial(device string, baud int, mode hw.DelimiterMode) {
 		fmt.Println(frame.String())
 	}
 }
-
