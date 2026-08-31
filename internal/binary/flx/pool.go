@@ -182,3 +182,4 @@ func DecodePool(r io.Reader, count uint32) (ConstantPool, error) {
 
 	return pool, nil
 }
+

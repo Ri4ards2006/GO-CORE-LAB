@@ -257,3 +257,4 @@ func PrintDisassembly(instructions []Instruction) {
 		fmt.Printf("  0x%04x:  %-12s %-20s %s\n", inst.Offset, byteStr, instStr, annotationStr)
 	}
 }
+

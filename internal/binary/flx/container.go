@@ -167,3 +167,4 @@ func (f *File) PrintSummary() {
 	f.Pool.Print()
 	PrintDisassembly(f.Instructions)
 }
+
