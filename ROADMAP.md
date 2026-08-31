@@ -45,14 +45,14 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 
 **Objective:** Cross-integrate with the `flux-lang` ecosystem by building an inspector and disassembler for `.flx` binary bytecode containers.
 
-- [ ] **`.flx` Container Specification:**
-  - [ ] Define container header (Magic `0x46 0x4C 0x58 0x01` -> `FLX\x01`, version, flags).
-  - [ ] Parse metadata table (author, compiler version, timestamp).
-- [ ] **Constant Pool Deserialization:**
-  - [ ] Decode integer constants, floating-point literals, UTF-8 strings, and symbol identifiers.
-- [ ] **Bytecode Stream Disassembler:**
-  - [ ] Implement instruction decoder matching opcode tables.
-  - [ ] Disassemble instructions with operand resolution (e.g., `LOAD_CONST`, `STORE_FAST`, `BINARY_ADD`, `JUMP_IF_FALSE`, `CALL_FUNCTION`).
+- [x] **`.flx` Container Specification:**
+  - [x] Define container header (Magic `0x46 0x4C 0x58 0x01` -> `FLX\x01`, version, flags).
+  - [x] Parse metadata table (author, compiler version, timestamp).
+- [x] **Constant Pool Deserialization:**
+  - [x] Decode integer constants, floating-point literals, UTF-8 strings, and symbol identifiers.
+- [x] **Bytecode Stream Disassembler:**
+  - [x] Implement instruction decoder matching opcode tables.
+  - [x] Disassemble instructions with operand resolution (e.g., `LOAD_CONST`, `STORE_FAST`, `BINARY_ADD`, `JUMP_IF_FALSE`, `CALL_FUNCTION`).
 - [ ] **Execution & Control Flow Graph (CFG) Visualizer:**
   - [ ] Trace basic blocks and branch targets.
   - [ ] Generate ASCII / DOT graphs of bytecode execution paths.
