@@ -85,15 +85,16 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 
 **Objective:** Polish developer experience, provide modular reporting, and ensure zero-allocation performance on resource-constrained systems.
 
-- [ ] **Consolidated CLI Suite:**
-  - [ ] Multi-command CLI for `bin-analysis` (`bin-analysis elf <file>`, `bin-analysis sections <file>`, `bin-analysis symbols <file>`, `bin-analysis flx <file>`).
-  - [ ] Interactive terminal UI mode using ANSI escape codes and terminal colorizers.
-- [ ] **Hex & Report Visualizer (`pkg/report`):**
-  - [ ] Canonical 16-byte hex dump grid with ASCII sidebar and offset indexing.
-  - [ ] Tabular output formatters with colored permission flags (`r-x`, `rw-`, `r--`).
-- [ ] **Zero-Allocation & Memory Mapping:**
-  - [ ] Integrate `syscall.Mmap` for parsing multi-gigabyte files without heap exhaustion.
-  - [ ] Utilize `sync.Pool` for buffer reuse in high-throughput network packet capture.
-- [ ] **Testing, CI & Fuzzing:**
-  - [ ] Automated Go unit tests against curated test fixtures in `testdata/`.
-  - [ ] Go native fuzz testing (`go test -fuzz`) for binary header and packet parsers to prevent panics and bounds out-of-range crashes.
+- [x] **Consolidated CLI Suite:**
+  - [x] Unified multi-command CLI (`cmd/gocore`) bridging binary forensics, hex visualizer, and network probing.
+  - [x] Interactive terminal UI mode and real-time ANSI dashboard (`internal/pipeline/dashboard.go`).
+- [x] **Hex & Report Visualizer (`pkg/report`):**
+  - [x] Canonical 16-byte hex dump grid with ANSI byte-classification syntax highlighting and ASCII sidebar (`pkg/report/hexdump.go`).
+  - [x] Tabular ASCII output formatters (`pkg/report/table.go`).
+- [x] **Zero-Allocation & Memory Mapping:**
+  - [x] Integrate `syscall.Mmap` for zero-copy parsing of multi-gigabyte files (`internal/mmap/mmap.go`).
+  - [x] Utilize `sync.Pool` for buffer reuse in packet capture and telemetry slicing (`pkg/pool/buffer_pool.go`).
+- [x] **Testing, CI & Fuzzing:**
+  - [x] Automated Go unit tests and race detection across all internal packages.
+  - [x] Performance benchmarks comparing standard I/O vs `mmap` vs zero-copy parsing.
+  - [x] Native Go fuzz testing (`FuzzParseELF`, `FuzzParseFLX`) for binary header and bytecode parsers.

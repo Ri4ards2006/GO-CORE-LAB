@@ -4,10 +4,13 @@
 package flx
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/Ri4ards2006/go-core-lab/internal/mmap"
 )
 
 // Magic bytes identifying a .flx binary: 'F' 'L' 'X' '\x01'
@@ -46,6 +49,28 @@ func ParseFile(path string) (*File, error) {
 	defer f.Close()
 
 	return ParseReader(f, path)
+}
+
+// ParseFLXBytes parses a .flx binary directly from an in-memory byte slice.
+func ParseFLXBytes(data []byte, path string) (*File, error) {
+	reader := bytes.NewReader(data)
+	return ParseReader(reader, path)
+}
+
+// ParseFLXMmap maps a .flx file into memory and parses it with zero disk-seek overhead.
+func ParseFLXMmap(path string) (*File, *mmap.File, error) {
+	mf, err := mmap.Open(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("mmap .flx: %w", err)
+	}
+
+	flxFile, err := ParseFLXBytes(mf.Bytes(), path)
+	if err != nil {
+		mf.Close()
+		return nil, nil, err
+	}
+
+	return flxFile, mf, nil
 }
 
 // ParseReader parses a .flx binary from an io.ReadSeeker.

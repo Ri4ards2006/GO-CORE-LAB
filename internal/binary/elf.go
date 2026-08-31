@@ -5,11 +5,14 @@
 package binary
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/Ri4ards2006/go-core-lab/internal/mmap"
 )
 
 // Magic bytes identifying an ELF binary: 0x7F 'E' 'L' 'F'
@@ -126,6 +129,28 @@ func ParseELF(path string) (*ELFFile, error) {
 	defer f.Close()
 
 	return ParseELFReader(f, path)
+}
+
+// ParseELFBytes parses an ELF binary directly from an in-memory byte slice.
+func ParseELFBytes(data []byte, path string) (*ELFFile, error) {
+	reader := bytes.NewReader(data)
+	return ParseELFReader(reader, path)
+}
+
+// ParseELFMmap maps an ELF file into memory and parses it with zero disk-seek overhead.
+func ParseELFMmap(path string) (*ELFFile, *mmap.File, error) {
+	mf, err := mmap.Open(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("mmap elf: %w", err)
+	}
+
+	elfFile, err := ParseELFBytes(mf.Bytes(), path)
+	if err != nil {
+		mf.Close()
+		return nil, nil, err
+	}
+
+	return elfFile, mf, nil
 }
 
 // ParseELFReader parses an ELF binary from any io.ReadSeeker source.
