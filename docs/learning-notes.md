@@ -79,3 +79,4 @@ func LearnControlFlow() {
 ### 5. Interfaces
 - Interfaces in Go are satisfied implicitly (structural typing/duck typing).
 - Any struct that implements the method signature `Print()` satisfies `type Printable interface { Print() }`.
+

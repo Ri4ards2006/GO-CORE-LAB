@@ -188,3 +188,4 @@ func TestArchitectureNames(t *testing.T) {
 		}
 	}
 }
+
