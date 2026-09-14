@@ -33,7 +33,7 @@ func printUsage() {
 	fmt.Println("Usage: gocore <subsystem> <command> [options] [arguments]")
 	fmt.Println()
 	fmt.Println("Binary Forensics (bin):")
-	fmt.Println("  bin elf <file>                           Inspect ELF headers & sections (zero-copy mmap)")
+	fmt.Println("  bin elf <file> [symbols|segments|all]    Inspect ELF headers, segments, sections & symbols")
 	fmt.Println("  bin flx <file> [header|pool|disasm]      Inspect flux-lang bytecode container & disasm")
 	fmt.Println("  bin hex <file> [--offset N] [--len N]    Canonical 16-byte ANSI-colorized hex visualizer")
 	fmt.Println()
@@ -91,10 +91,28 @@ func runBinCommand(args []string) {
 	switch cmd {
 	case "elf":
 		if len(args) < 2 {
-			fmt.Println("Usage: gocore bin elf <file>")
+			fmt.Println("Usage: gocore bin elf <file> [symbols|dynsym|segments|sections|all]")
+			fmt.Println("   or: gocore bin elf [symbols|dynsym|segments|sections|all] <file>")
 			os.Exit(1)
 		}
+
 		path := args[1]
+		sub := "default"
+
+		subcommands := map[string]bool{
+			"symbols": true, "symtab": true, "dynsym": true, "dynsymbols": true,
+			"segments": true, "program": true, "ph": true,
+			"sections": true, "sh": true, "all": true, "header": true,
+		}
+
+		if subcommands[args[1]] && len(args) >= 3 {
+			sub = args[1]
+			path = args[2]
+		} else if len(args) >= 3 && subcommands[args[2]] {
+			sub = args[2]
+			path = args[1]
+		}
+
 		elfFile, mf, err := binary.ParseELFMmap(path)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error analyzing ELF %q: %v\n", path, err)
@@ -103,8 +121,31 @@ func runBinCommand(args []string) {
 		if mf != nil {
 			defer mf.Close()
 		}
-		elfFile.Print()
-		elfFile.PrintSections()
+
+		switch sub {
+		case "symbols", "symtab":
+			elfFile.Print()
+			elfFile.PrintSymbols()
+		case "dynsym", "dynsymbols":
+			elfFile.Print()
+			elfFile.PrintDynSymbols()
+		case "segments", "program", "ph":
+			elfFile.Print()
+			elfFile.PrintSegments()
+		case "sections", "sh":
+			elfFile.Print()
+			elfFile.PrintSections()
+		case "all":
+			elfFile.Print()
+			elfFile.PrintSegments()
+			elfFile.PrintSections()
+			elfFile.PrintSymbols()
+			elfFile.PrintDynSymbols()
+		default:
+			elfFile.Print()
+			elfFile.PrintSegments()
+			elfFile.PrintSections()
+		}
 
 	case "flx":
 		if len(args) < 2 {

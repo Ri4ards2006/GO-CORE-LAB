@@ -39,10 +39,27 @@ func main() {
 	case "elf":
 		if len(os.Args) < 3 {
 			fmt.Println("Error: missing target file for 'elf' command")
-			fmt.Println("Usage: bin-analysis elf <file>")
+			fmt.Println("Usage: bin-analysis elf <file> [symbols|segments|sections|all]")
 			os.Exit(1)
 		}
-		analyzeELF(os.Args[2])
+
+		path := os.Args[2]
+		sub := "default"
+		subcommands := map[string]bool{
+			"symbols": true, "symtab": true, "dynsym": true,
+			"segments": true, "program": true, "ph": true,
+			"sections": true, "sh": true, "all": true,
+		}
+
+		if subcommands[os.Args[2]] && len(os.Args) >= 4 {
+			sub = os.Args[2]
+			path = os.Args[3]
+		} else if len(os.Args) >= 4 && subcommands[os.Args[3]] {
+			sub = os.Args[3]
+			path = os.Args[2]
+		}
+
+		analyzeELF(path, sub)
 
 	case "flx":
 		if len(os.Args) < 3 {
@@ -85,15 +102,37 @@ func main() {
 	}
 }
 
-func analyzeELF(path string) {
+func analyzeELF(path string, sub string) {
 	elfFile, err := binary.ParseELF(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error analyzing ELF %q: %v\n", path, err)
 		os.Exit(1)
 	}
 
-	elfFile.Print()
-	elfFile.PrintSections()
+	switch sub {
+	case "symbols", "symtab":
+		elfFile.Print()
+		elfFile.PrintSymbols()
+	case "dynsym":
+		elfFile.Print()
+		elfFile.PrintDynSymbols()
+	case "segments", "program", "ph":
+		elfFile.Print()
+		elfFile.PrintSegments()
+	case "sections", "sh":
+		elfFile.Print()
+		elfFile.PrintSections()
+	case "all":
+		elfFile.Print()
+		elfFile.PrintSegments()
+		elfFile.PrintSections()
+		elfFile.PrintSymbols()
+		elfFile.PrintDynSymbols()
+	default:
+		elfFile.Print()
+		elfFile.PrintSegments()
+		elfFile.PrintSections()
+	}
 }
 
 func analyzeFLXHeader(path string) {

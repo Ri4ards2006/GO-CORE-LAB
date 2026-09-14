@@ -87,13 +87,17 @@ var sectionTypeNames = map[uint32]string{
 
 // ELFHeader represents the normalized ELF File Header (32-bit and 64-bit).
 type ELFHeader struct {
-	Class    uint8  // 1 = 32-bit, 2 = 64-bit
-	Data     uint8  // 1 = Little Endian, 2 = Big Endian
-	Machine  uint16 // Target instruction set architecture
-	Entry    uint64 // Virtual entry point address
-	ShOff    uint64 // Section header table file offset
-	ShNum    uint16 // Number of section header entries
-	ShStrIdx uint16 // Section header index of the string table (.shstrtab)
+	Class     uint8  // 1 = 32-bit, 2 = 64-bit
+	Data      uint8  // 1 = Little Endian, 2 = Big Endian
+	Machine   uint16 // Target instruction set architecture
+	Entry     uint64 // Virtual entry point address
+	PhOff     uint64 // Program header table file offset (e_phoff)
+	ShOff     uint64 // Section header table file offset (e_shoff)
+	PhEntSize uint16 // Program header table entry size (e_phentsize)
+	PhNum     uint16 // Number of program header entries (e_phnum)
+	ShEntSize uint16 // Section header table entry size (e_shentsize)
+	ShNum     uint16 // Number of section header entries (e_shnum)
+	ShStrIdx  uint16 // Section header index of the string table (.shstrtab)
 }
 
 // Section models an ELF section header and its resolved metadata.
@@ -112,11 +116,14 @@ type Section struct {
 	EntSize   uint64 // Entry size for sections holding fixed-size tables (sh_entsize)
 }
 
-// ELFFile represents a parsed ELF binary with its header and section table.
+// ELFFile represents a parsed ELF binary with its header, segments, sections, and symbols.
 type ELFFile struct {
-	Header   ELFHeader
-	Sections []Section
-	Path     string
+	Header     ELFHeader
+	Segments   []Segment
+	Sections   []Section
+	Symbols    []Symbol
+	DynSymbols []Symbol
+	Path       string
 }
 
 // ParseELF opens a file, verifies its ELF identity, and parses both
@@ -187,22 +194,52 @@ func ParseELFReader(r io.ReadSeeker, path string) (*ELFFile, error) {
 
 	if elf.Header.Class == Class64 {
 		elf.Header.Entry = bo.Uint64(raw[24:32])
+		elf.Header.PhOff = bo.Uint64(raw[32:40])
 		elf.Header.ShOff = bo.Uint64(raw[40:48])
+		elf.Header.PhEntSize = bo.Uint16(raw[54:56])
+		elf.Header.PhNum = bo.Uint16(raw[56:58])
+		elf.Header.ShEntSize = bo.Uint16(raw[58:60])
 		elf.Header.ShNum = bo.Uint16(raw[60:62])
 		elf.Header.ShStrIdx = bo.Uint16(raw[62:64])
 	} else {
 		elf.Header.Entry = uint64(bo.Uint32(raw[24:28]))
+		elf.Header.PhOff = uint64(bo.Uint32(raw[28:32]))
 		elf.Header.ShOff = uint64(bo.Uint32(raw[32:36]))
+		elf.Header.PhEntSize = bo.Uint16(raw[42:44])
+		elf.Header.PhNum = bo.Uint16(raw[44:46])
+		elf.Header.ShEntSize = bo.Uint16(raw[46:48])
 		elf.Header.ShNum = bo.Uint16(raw[48:50])
 		elf.Header.ShStrIdx = bo.Uint16(raw[50:52])
 	}
 
-	// Parse Section Header Table
+	// 1. Parse Program Header Table (Segments)
+	segments, err := parseSegments(r, &elf.Header, bo)
+	if err != nil {
+		return nil, fmt.Errorf("parse segments: %w", err)
+	}
+	elf.Segments = segments
+
+	// 2. Parse Section Header Table
 	sections, err := parseSections(r, &elf.Header, bo)
 	if err != nil {
 		return nil, fmt.Errorf("parse sections: %w", err)
 	}
 	elf.Sections = sections
+
+	// 3. Extract Symbol Tables (.symtab & .dynsym)
+	for _, sec := range elf.Sections {
+		if sec.Type == SHT_SYMTAB {
+			syms, err := parseSymbolTable(r, sec, elf.Sections, elf.Header.Class, bo)
+			if err == nil {
+				elf.Symbols = syms
+			}
+		} else if sec.Type == SHT_DYNSYM {
+			dynSyms, err := parseSymbolTable(r, sec, elf.Sections, elf.Header.Class, bo)
+			if err == nil {
+				elf.DynSymbols = dynSyms
+			}
+		}
+	}
 
 	return elf, nil
 }
@@ -352,7 +389,9 @@ func (e *ELFFile) Print() {
 	fmt.Printf("Arch:        %s (%s)\n", arch, bits[e.Header.Class])
 	fmt.Printf("Endian:      %s\n", endian[e.Header.Data])
 	fmt.Printf("Entry:       0x%x\n", e.Header.Entry)
+	fmt.Printf("Program Hdr: 0x%x (Count: %d, EntrySize: %d)\n", e.Header.PhOff, e.Header.PhNum, e.Header.PhEntSize)
 	fmt.Printf("Section Hdr: 0x%x (Count: %d, StrIdx: %d)\n", e.Header.ShOff, e.Header.ShNum, e.Header.ShStrIdx)
+	fmt.Printf("Symbols:     Static: %d, Dynamic: %d\n", len(e.Symbols), len(e.DynSymbols))
 }
 
 // PrintSections displays a formatted table of all section headers.

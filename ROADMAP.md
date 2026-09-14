@@ -30,11 +30,13 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 - [x] **Section Name String Table (`.shstrtab`) Resolution:**
   - [x] Seek to `.shstrtab` raw data offset.
   - [x] Extract null-terminated strings using `sh_name` string table offsets to populate human-readable section names (`.text`, `.data`, `.rodata`, `.bss`).
-- [ ] **Symbol Table (`.symtab` & `.dynsym`) Extractor:**
-  - [ ] Parse `Elf64_Sym` / `Elf32_Sym` entries (`st_name`, `st_info`, `st_other`, `st_shndx`, `st_value`, `st_size`).
-  - [ ] Cross-reference string table (`.strtab`) to resolve function and global variable names.
-- [ ] **Program Header Table (Segments):**
-  - [ ] Parse `Elf64_Phdr` entries (`p_type` `PT_LOAD`, `PT_DYNAMIC`, `PT_INTERP`, `p_vaddr`, `p_memsz`, `p_flags`).
+- [x] **Symbol Table (`.symtab` & `.dynsym`) Extractor:**
+  - [x] Parse `Elf64_Sym` / `Elf32_Sym` entries (`st_name`, `st_info`, `st_other`, `st_shndx`, `st_value`, `st_size`).
+  - [x] Cross-reference string table (`.strtab` and `.dynstr`) to resolve function and global variable names.
+  - [x] Decode symbol bindings (GLOBAL, LOCAL, WEAK), symbol types (FUNC, OBJECT, FILE, SECTION, NOTYPE), and visibilities.
+- [x] **Program Header Table (Segments):**
+  - [x] Parse `Elf64_Phdr` / `Elf32_Phdr` entries (`p_type` `PT_LOAD`, `PT_DYNAMIC`, `PT_INTERP`, `p_vaddr`, `p_memsz`, `p_flags`).
+  - [x] Decode segment permission bitmasks (PF_R, PF_W, PF_X).
 - [ ] **Extensibility: PE (Portable Executable) & Mach-O Parsers:**
   - [ ] Implement PE DOS Header (`MZ`) and PE Header signature verification.
   - [ ] Implement Mach-O Magic (`0xFEEDFACE` / `0xFEEDFACF`) detector.
