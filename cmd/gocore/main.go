@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -42,6 +43,16 @@ func printUsage() {
 	fmt.Println("  net capture <iface> [-w out.pcap]        Direct raw socket packet sniffer")
 	fmt.Println("  net pcap <file.pcap>                     Parse & replay packets from PCAP capture")
 	fmt.Println("  net serial <device> [baud] [mode]        Direct UART/Serial bus telemetry monitor")
+	fmt.Println("  net bus i2c <device> <addr_hex> [len]    Linux I2C slave register reader")
+	fmt.Println("  net bus spi <device> [speed_hz] [len]    Linux SPI bus stream reader")
+	fmt.Println()
+	fmt.Println("Options for 'net live':")
+	fmt.Println("  --proto <protocol>       Filter protocol: tcp, udp, icmp, arp, ip")
+	fmt.Println("  --port <port>            Filter port: matches src or dst port")
+	fmt.Println("  --host <ip_or_cidr>      Filter host IP or subnet (e.g. 192.168.1.1 or 10.0.0.0/8)")
+	fmt.Println("  --pcap-out <file.pcap>   Record processed packets to PCAP file")
+	fmt.Println("  --jsonl-out <file.jsonl> Stream processed events to NDJSON / JSON-Lines file")
+	fmt.Println("  --dashboard              Enable real-time ANSI terminal telemetry dashboard")
 	fmt.Println()
 	fmt.Println("General:")
 	fmt.Println("  version                                  Print version and architecture")
@@ -256,11 +267,98 @@ func runNetCommand(args []string) {
 		}
 		runSerial(dev, baud, mode)
 
+	case "bus":
+		if len(args) < 2 {
+			fmt.Println("Usage: gocore net bus [i2c|spi] <options>")
+			os.Exit(1)
+		}
+		runBusCommand(args[1:])
+
 	case "live":
 		runLivePipeline(args[1:])
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown net command %q\n", cmd)
+		os.Exit(1)
+	}
+}
+
+func runBusCommand(args []string) {
+	busType := args[0]
+	switch busType {
+	case "i2c":
+		if len(args) < 3 {
+			fmt.Println("Usage: gocore net bus i2c <device> <addr_hex> [read_len]")
+			os.Exit(1)
+		}
+		dev := args[1]
+		addrStr := args[2]
+		addr, err := strconv.ParseUint(strings.TrimPrefix(addrStr, "0x"), 16, 16)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid I2C address %q: %v\n", addrStr, err)
+			os.Exit(1)
+		}
+		readLen := 16
+		if len(args) >= 4 {
+			if l, err := strconv.Atoi(args[3]); err == nil && l > 0 {
+				readLen = l
+			}
+		}
+
+		fmt.Printf("[*] Probing I2C device %s at slave address 0x%02x (read %d bytes)...\n", dev, addr, readLen)
+		bus, err := hw.NewI2CBus(dev, uint16(addr))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening I2C bus: %v\n", err)
+			os.Exit(1)
+		}
+		defer bus.Close()
+
+		data, err := bus.ReadBytes(readLen)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading from I2C bus: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("[+] Read %d bytes from I2C slave 0x%02x:\n", len(data), addr)
+		fmt.Print(gonet.FormatHexDump(data))
+
+	case "spi":
+		if len(args) < 2 {
+			fmt.Println("Usage: gocore net bus spi <device> [speed_hz] [read_len]")
+			os.Exit(1)
+		}
+		dev := args[1]
+		speedHz := uint32(1000000)
+		if len(args) >= 3 {
+			if s, err := strconv.Atoi(args[2]); err == nil && s > 0 {
+				speedHz = uint32(s)
+			}
+		}
+		readLen := 32
+		if len(args) >= 4 {
+			if l, err := strconv.Atoi(args[3]); err == nil && l > 0 {
+				readLen = l
+			}
+		}
+
+		fmt.Printf("[*] Opening SPI device %s at %d Hz (reading %d bytes)...\n", dev, speedHz, readLen)
+		bus, err := hw.NewSPIBus(dev, speedHz, 0)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening SPI bus: %v\n", err)
+			os.Exit(1)
+		}
+		defer bus.Close()
+
+		buf := make([]byte, readLen)
+		n, err := bus.Read(buf)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading from SPI bus: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("[+] Read %d bytes from SPI:\n", n)
+		fmt.Print(gonet.FormatHexDump(buf[:n]))
+
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown bus type %q (choose i2c or spi)\n", busType)
 		os.Exit(1)
 	}
 }
@@ -275,6 +373,11 @@ func runLivePipeline(args []string) {
 	workersFlag := fs.Int("workers", runtime.NumCPU(), "Dissection worker count")
 	queueFlag := fs.Int("queue", 2048, "Queue buffer depth")
 	pcapOutFlag := fs.String("pcap-out", "", "Output PCAP recording file")
+	jsonlOutFlag := fs.String("jsonl-out", "", "Output JSONL streaming file")
+	jsonlFlag := fs.String("jsonl", "", "Alias for --jsonl-out")
+	protoFlag := fs.String("proto", "", "Filter protocol (tcp, udp, icmp, arp, ip)")
+	portFlag := fs.Int("port", 0, "Filter port (src or dst)")
+	hostFlag := fs.String("host", "", "Filter host IP or CIDR (e.g. 192.168.1.1 or 10.0.0.0/8)")
 	dashFlag := fs.Bool("dashboard", false, "Enable live terminal dashboard")
 
 	if err := fs.Parse(args); err != nil {
@@ -304,11 +407,24 @@ func runLivePipeline(args []string) {
 		os.Exit(1)
 	}
 
+	// Build Packet Filter
+	var filter *gonet.PacketFilter
+	if *protoFlag != "" || *portFlag != 0 || *hostFlag != "" {
+		f, err := gonet.NewPacketFilter(*protoFlag, uint16(*portFlag), *hostFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error initializing packet filter: %v\n", err)
+			os.Exit(1)
+		}
+		filter = f
+		fmt.Printf("[*] Applied Userspace Filter: proto=%q port=%d host=%q\n", *protoFlag, *portFlag, *hostFlag)
+	}
+
 	cfg := pipeline.EngineConfig{
 		NumWorkers:         *workersFlag,
 		QueueSize:          *queueFlag,
 		RingBufferSize:     512,
 		DropOnBackpressure: false,
+		Filter:             filter,
 	}
 
 	engine := pipeline.NewPipelineEngine(cfg, src)
@@ -320,6 +436,21 @@ func runLivePipeline(args []string) {
 			os.Exit(1)
 		}
 		engine.AddSink(pSink)
+		fmt.Printf("[*] Recording pipeline events to PCAP: %s\n", *pcapOutFlag)
+	}
+
+	jsonlPath := *jsonlOutFlag
+	if jsonlPath == "" {
+		jsonlPath = *jsonlFlag
+	}
+	if jsonlPath != "" {
+		jSink, err := pipeline.NewJsonlSink(jsonlPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating JSONL sink: %v\n", err)
+			os.Exit(1)
+		}
+		engine.AddSink(jSink)
+		fmt.Printf("[*] Streaming pipeline events to JSONL: %s\n", jsonlPath)
 	}
 
 	if !*dashFlag {

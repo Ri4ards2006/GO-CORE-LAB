@@ -25,6 +25,20 @@ const (
 	IPProtoUDP  uint8 = 17
 )
 
+// IPProtocolName returns the human-readable name of an IP protocol number.
+func IPProtocolName(proto uint8) string {
+	switch proto {
+	case IPProtoICMP:
+		return "ICMP"
+	case IPProtoTCP:
+		return "TCP"
+	case IPProtoUDP:
+		return "UDP"
+	default:
+		return fmt.Sprintf("IP(%d)", proto)
+	}
+}
+
 // TCP Flag bitmasks (Layer 4)
 const (
 	TCPFlagFIN uint8 = 0x01

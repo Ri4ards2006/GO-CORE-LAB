@@ -16,10 +16,11 @@ import (
 
 // EngineConfig configures the concurrency and buffering of the pipeline engine.
 type EngineConfig struct {
-	NumWorkers         int  // Number of parallel dissection workers
-	QueueSize          int  // Ingestion buffer queue depth
-	RingBufferSize     int  // In-memory ring buffer capacity
-	DropOnBackpressure bool // Non-blocking ingestion if true; backpressure if false
+	NumWorkers         int                 // Number of parallel dissection workers
+	QueueSize          int                 // Ingestion buffer queue depth
+	RingBufferSize     int                 // In-memory ring buffer capacity
+	DropOnBackpressure bool                // Non-blocking ingestion if true; backpressure if false
+	Filter             *gonet.PacketFilter // Userspace packet filter (protocol, ports, host/CIDR)
 }
 
 // DefaultEngineConfig returns optimal defaults based on host CPU count.
@@ -33,6 +34,7 @@ func DefaultEngineConfig() EngineConfig {
 		QueueSize:          2048,
 		RingBufferSize:     512,
 		DropOnBackpressure: false,
+		Filter:             nil,
 	}
 }
 
@@ -157,6 +159,11 @@ func (pe *PipelineEngine) workerLoop(workerID int) {
 		switch event.Type {
 		case EventNetwork:
 			pkt, err := gonet.DissectWithTimestamp(event.Data, event.Timestamp)
+			if err == nil && pe.Config.Filter != nil && !pe.Config.Filter.IsEmpty() {
+				if !pe.Config.Filter.Matches(pkt) {
+					continue // Discard filtered packet early
+				}
+			}
 			pEvent.Packet = pkt
 			pEvent.Error = err
 
